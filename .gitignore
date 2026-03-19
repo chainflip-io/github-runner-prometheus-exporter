@@ -1,4 +1,5 @@
 github-runner.yaml
+exporter/main
 go.mod
 go.sum
 test/*
