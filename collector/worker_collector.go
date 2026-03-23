@@ -176,7 +176,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thineshsubramani/github-runner-prometheus-exporter/internal/parser"
-	"github.com/thineshsubramani/github-runner-prometheus-exporter/internal/watcher"
 )
 
 type WorkerCollector struct {
@@ -184,7 +183,6 @@ type WorkerCollector struct {
 	workflowStart   *prometheus.GaugeVec
 	workflowEnd     *prometheus.GaugeVec
 	workflowRuntime *prometheus.GaugeVec
-	runnerState     *prometheus.GaugeVec
 }
 
 func NewWorkerCollector(path string) *WorkerCollector {
@@ -213,29 +211,7 @@ func NewWorkerCollector(path string) *WorkerCollector {
 			Name: "github_workflow_duration_seconds",
 			Help: "Duration of GitHub workflow run",
 		}, labelKeys),
-
-		runnerState: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "github_runner_state",
-			Help: "Runner state: 1=busy, 0=idle",
-		}, []string{"hostname", "mode"}),
 	}
-
-	// Start watcher inline
-	go func() {
-		err := watcher.WatchLogDir(path, func(path string, event string) {
-			switch event {
-			case "created":
-				log.Println("Runner active (event.json created)")
-				c.runnerState.WithLabelValues("insight-development-lab", "prod").Set(1)
-			case "deleted":
-				log.Println("Runner idle (event.json deleted)")
-				c.runnerState.WithLabelValues("insight-development-lab", "prod").Set(0)
-			}
-		})
-		if err != nil {
-			log.Printf(" Watcher error: %v", err)
-		}
-	}()
 
 	return c
 }
@@ -244,7 +220,6 @@ func (c *WorkerCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.workflowStart.Describe(ch)
 	c.workflowEnd.Describe(ch)
 	c.workflowRuntime.Describe(ch)
-	c.runnerState.Describe(ch)
 }
 
 func (c *WorkerCollector) Collect(ch chan<- prometheus.Metric) {
@@ -275,7 +250,6 @@ func (c *WorkerCollector) Collect(ch chan<- prometheus.Metric) {
 	c.workflowStart.Collect(ch)
 	c.workflowEnd.Collect(ch)
 	c.workflowRuntime.Collect(ch)
-	c.runnerState.Collect(ch)
 }
 
 func defaultIfEmpty(s string) string {

@@ -45,12 +45,9 @@ func New(cfg *config.Config) *Exporter {
 	// wrappedReg.MustRegister(collector.NewInfoCollector(cfg))
 	runnerWrappedReg.MustRegister(collector.NewDiskCollector())
 	// Custom collectors
-	// if cfg.Metrics.EnableRunner {
-	// 	reg.MustRegister(collector.NewRunnerCollector(cfg.Paths.Logs.Linux.Worker)) // OS switch handled later
-	// }
-	// if cfg.Metrics.EnableJob {
-	// 	reg.MustRegister(collector.NewJobCollector(cfg.Paths.Logs.Linux.Worker))
-	// }
+	if cfg.Runners[0].Metrics.EnableJob && cfg.Runners[0].Logs.Worker != "" {
+		runnerWrappedReg.MustRegister(collector.NewWorkerCollector(cfg.Runners[0].Logs.Worker))
+	}
 	if cfg.Runners[0].Metrics.EnableEvent {
 		runnerWrappedReg.MustRegister(collector.NewEventCollector(cfg))
 	}
