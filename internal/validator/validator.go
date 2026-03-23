@@ -69,13 +69,10 @@ func ValidateConfig(cfg *config.Config) error {
 		if eventPath == "" {
 			return fmt.Errorf("runner %q: event path is required when metrics.enable_event is true", runner.Name)
 		}
-		eventDir := filepath.Dir(eventPath)
-		info, err := os.Stat(eventDir)
-		if err != nil {
-			return fmt.Errorf("runner %q: event directory not accessible: %w", runner.Name, err)
-		}
-		if !info.IsDir() {
-			return fmt.Errorf("runner %q: event path parent must be a directory", runner.Name)
+		// event.json and its parent directory are created by the runner only while jobs are active,
+		// so they may legitimately not exist at exporter startup.
+		if filepath.Base(eventPath) != "event.json" {
+			return fmt.Errorf("runner %q: event path must point to event.json", runner.Name)
 		}
 	}
 
