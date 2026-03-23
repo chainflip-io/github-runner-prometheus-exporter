@@ -335,7 +335,7 @@
               }
             ]
           },
-          "unit": "dateTimeFromNow"
+          "unit": "dateTimeAsIso"
         },
         "overrides": []
       },
@@ -367,7 +367,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max(github_workflow_end_timestamp_seconds{job=~\"$job\", runner_group=~\"$runner_group\", provider=~\"$provider\", hostname=~\"$hostname\", workflow=~\"$workflow\", repository=~\"$repository\"})",
+          "expr": "1000 * max(github_workflow_end_timestamp_seconds{job=~\"$job\", runner_group=~\"$runner_group\", provider=~\"$provider\", hostname=~\"$hostname\", workflow=~\"$workflow\", repository=~\"$repository\"})",
           "refId": "A"
         }
       ],
@@ -392,7 +392,7 @@
             "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "normal"
+              "mode": "none"
             }
           },
           "unit": "none"
@@ -437,7 +437,7 @@
           "refId": "B"
         }
       ],
-      "title": "Busy vs Idle Runners",
+      "title": "Runner State Over Time",
       "type": "timeseries"
     },
     {
@@ -508,11 +508,11 @@
             "uid": "${datasource}"
           },
           "expr": "github_runner_state{job=~\"$job\", state=\"busy\", runner_group=~\"$runner_group\", provider=~\"$provider\", hostname=~\"$hostname\"}",
-          "legendFormat": "{{runner_name}} ({{hostname}})",
+          "legendFormat": "{{runner_name}}",
           "refId": "A"
         }
       ],
-      "title": "Per-Runner Busy Timeline",
+      "title": "Per-Runner State Timeline",
       "type": "state-timeline"
     },
     {

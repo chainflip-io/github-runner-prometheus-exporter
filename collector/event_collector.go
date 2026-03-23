@@ -19,11 +19,10 @@ type EventCollector struct {
 	eventTimestamp *prometheus.GaugeVec
 	runnerState    *prometheus.GaugeVec
 
-	eventPath    string
-	lastPush     string
-	activeLabels []string
-	runnerIdle   bool
-	mu           sync.Mutex
+	eventPath  string
+	lastPush   string
+	runnerIdle bool
+	mu         sync.Mutex
 }
 
 func NewEventCollector(cfg *config.Config) *EventCollector {
@@ -74,10 +73,6 @@ func NewEventCollector(cfg *config.Config) *EventCollector {
 				case "deleted":
 					c.setRunnerState(true)
 					c.lastPush = ""
-					if c.activeLabels != nil {
-						c.eventTriggered.DeleteLabelValues(c.activeLabels...)
-						c.activeLabels = nil
-					}
 				}
 			})
 			if err != nil {
@@ -107,18 +102,19 @@ func (c *EventCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *EventCollector) Collect(ch chan<- prometheus.Metric) {
+	c.mu.Lock()
 	if _, err := os.Stat(c.eventPath); err == nil {
 		c.setRunnerState(false)
 	} else {
 		c.setRunnerState(true)
 	}
+	runnerIdle := c.runnerIdle
+	lastPush := c.lastPush
+	c.mu.Unlock()
+
 	c.runnerState.Collect(ch)
 
-	if c.runnerIdle {
-		return
-	}
-
-	if _, err := os.Stat(c.eventPath); os.IsNotExist(err) {
+	if runnerIdle {
 		return
 	}
 
@@ -132,19 +128,6 @@ func (c *EventCollector) Collect(ch chan<- prometheus.Metric) {
 	repositoryOwner := parser.EventRepositoryOwner(event)
 	workflow := event.WorkflowName
 
-	// logDir := filepath.Dir(c.eventPath)
-	// job, err := parser.ParseLatestWorkerLog(logDir)
-	// runID := ""
-	// if err == nil && job != nil && job.RunID != "" {
-	// 	runID = job.RunID
-	// }
-
-	// ts, err := time.Parse(time.RFC3339, event.Repository.PushedAt)
-	// if err != nil {
-	// 	log.Printf("Failed to parse pushed_at: %v", err)
-	// 	return
-	// }
-
 	labels := []string{repository, repositoryOwner, workflow}
 
 	ts, err := time.Parse(time.RFC3339, event.Repository.PushedAt)
@@ -154,12 +137,11 @@ func (c *EventCollector) Collect(ch chan<- prometheus.Metric) {
 		c.eventTimestamp.WithLabelValues(labels...).Set(float64(ts.Unix()))
 	}
 
-	if event.Repository.PushedAt != c.lastPush {
+	if event.Repository.PushedAt != lastPush {
 		c.eventTriggered.WithLabelValues(labels...).Inc()
-		c.lastPush = event.Repository.PushedAt
 
 		c.mu.Lock()
-		c.activeLabels = labels
+		c.lastPush = event.Repository.PushedAt
 		c.mu.Unlock()
 	}
 
