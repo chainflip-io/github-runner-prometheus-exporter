@@ -19,11 +19,10 @@ type EventCollector struct {
 	eventTimestamp *prometheus.GaugeVec
 	runnerState    *prometheus.GaugeVec
 
-	eventPath    string
-	lastPush     string
-	activeLabels []string
-	runnerIdle   bool
-	mu           sync.Mutex
+	eventPath  string
+	lastPush   string
+	runnerIdle bool
+	mu         sync.Mutex
 }
 
 func NewEventCollector(cfg *config.Config) *EventCollector {
@@ -60,28 +59,26 @@ func NewEventCollector(cfg *config.Config) *EventCollector {
 	// Watch the parent directory of event.json
 	eventDir := filepath.Dir(eventPath)
 	go func() {
-		err := watcher.WatchLogDir(eventDir, func(path string, event string) {
-			if filepath.Base(path) != filepath.Base(eventPath) {
-				return
-			}
-			c.mu.Lock()
-			defer c.mu.Unlock()
-
-			switch event {
-			case "created":
-				c.setRunnerState(false)
-			case "deleted":
-				c.setRunnerState(true)
-				c.lastPush = ""
-				if c.activeLabels != nil {
-					c.eventTriggered.DeleteLabelValues(c.activeLabels...)
-					// c.eventTimestamp.DeleteLabelValues(c.activeLabels...)
-					c.activeLabels = nil
+		for {
+			err := watcher.WatchLogDir(eventDir, func(path string, event string) {
+				if filepath.Base(path) != filepath.Base(eventPath) {
+					return
 				}
+				c.mu.Lock()
+				defer c.mu.Unlock()
+
+				switch event {
+				case "created":
+					c.setRunnerState(false)
+				case "deleted":
+					c.setRunnerState(true)
+					c.lastPush = ""
+				}
+			})
+			if err != nil {
+				log.Printf("Watcher error: %v", err)
 			}
-		})
-		if err != nil {
-			log.Printf("Watcher error: %v", err)
+			time.Sleep(10 * time.Second)
 		}
 	}()
 
@@ -105,9 +102,19 @@ func (c *EventCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *EventCollector) Collect(ch chan<- prometheus.Metric) {
+	c.mu.Lock()
+	if _, err := os.Stat(c.eventPath); err == nil {
+		c.setRunnerState(false)
+	} else {
+		c.setRunnerState(true)
+	}
+	runnerIdle := c.runnerIdle
+	lastPush := c.lastPush
+	c.mu.Unlock()
+
 	c.runnerState.Collect(ch)
 
-	if c.runnerIdle {
+	if runnerIdle {
 		return
 	}
 
@@ -147,12 +154,11 @@ func (c *EventCollector) Collect(ch chan<- prometheus.Metric) {
 		c.eventTimestamp.WithLabelValues(labels...).Set(float64(ts.Unix()))
 	}
 
-	if event.Repository.PushedAt != c.lastPush {
+	if event.Repository.PushedAt != lastPush {
 		c.eventTriggered.WithLabelValues(labels...).Inc()
-		c.lastPush = event.Repository.PushedAt
 
 		c.mu.Lock()
-		c.activeLabels = labels
+		c.lastPush = event.Repository.PushedAt
 		c.mu.Unlock()
 	}
 
