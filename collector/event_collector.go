@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thineshsubramani/github-runner-prometheus-exporter/config"
@@ -145,6 +146,13 @@ func (c *EventCollector) Collect(ch chan<- prometheus.Metric) {
 	// }
 
 	labels := []string{repo, org, workflow}
+
+	ts, err := time.Parse(time.RFC3339, event.Repository.PushedAt)
+	if err != nil {
+		log.Printf("Failed to parse pushed_at %q: %v", event.Repository.PushedAt, err)
+	} else {
+		c.eventTimestamp.WithLabelValues(labels...).Set(float64(ts.Unix()))
+	}
 
 	if event.Repository.PushedAt != c.lastPush {
 		c.eventTriggered.WithLabelValues(labels...).Inc()
