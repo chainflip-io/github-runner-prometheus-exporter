@@ -1,0 +1,34 @@
+name: Runner Metrics Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  exercise-runner:
+    runs-on: [self-hosted, hetzner-github-runner-11]
+    steps:
+      - name: Show runner context
+        run: |
+          echo "runner: $RUNNER_NAME"
+          echo "event path: $GITHUB_EVENT_PATH"
+          uname -a
+          df -h
+
+      - name: Create CPU activity
+        run: |
+          i=0
+          while [ $i -lt 2000000 ]; do
+            i=$((i+1))
+          done
+
+      - name: Create disk activity
+        run: |
+          mkdir -p /tmp/runner-metrics-test
+          dd if=/dev/zero of=/tmp/runner-metrics-test/blob.bin bs=1M count=256
+
+      - name: Hold runner busy
+        run: sleep 180
+
+      - name: Cleanup
+        if: always()
+        run: rm -rf /tmp/runner-metrics-test
