@@ -4,8 +4,8 @@ package parser
 
 import (
 	"encoding/json"
-	"log"
 	"os"
+	"strings"
 )
 
 // EventInfo holds parsed GitHub event data
@@ -38,9 +38,33 @@ func ReadEventJSON(path string) (*EventInfo, error) {
 		return nil, err
 	}
 
-	j, _ := json.MarshalIndent(event, "", "  ")
-	log.Println("✅ Parsed Event JSON:")
-	log.Println(string(j))
-
 	return &event, nil
+}
+
+func EventRepository(event *EventInfo) string {
+	if event == nil {
+		return "unknown"
+	}
+	if strings.TrimSpace(event.Repository.RepoFullName) != "" {
+		return strings.TrimSpace(event.Repository.RepoFullName)
+	}
+	if strings.TrimSpace(event.Repository.RepoName) != "" {
+		return strings.TrimSpace(event.Repository.RepoName)
+	}
+	return "unknown"
+}
+
+func EventRepositoryOwner(event *EventInfo) string {
+	if event == nil {
+		return "unknown"
+	}
+	if event.Organization != nil && strings.TrimSpace(event.Organization.OrgName) != "" {
+		return strings.TrimSpace(event.Organization.OrgName)
+	}
+	fullName := EventRepository(event)
+	parts := strings.SplitN(fullName, "/", 2)
+	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" {
+		return strings.TrimSpace(parts[0])
+	}
+	return "unknown"
 }

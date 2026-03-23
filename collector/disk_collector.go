@@ -36,29 +36,15 @@ func (c *DiskCollector) Collect(ch chan<- prometheus.Metric) {
 		mounts = []string{"/", "/tmp"}
 	}
 
-	var totalTotal, totalUsed, totalFree uint64
-
 	for _, m := range mounts {
 		usage, err := disk.Usage(m)
 		if err != nil {
 			continue
 		}
 
-		totalTotal += usage.Total
-		totalUsed += usage.Used
-		totalFree += usage.Free
-
 		ch <- prometheus.MustNewConstMetric(c.desc, prometheus.GaugeValue, float64(usage.Total), m, "total")
 		ch <- prometheus.MustNewConstMetric(c.desc, prometheus.GaugeValue, float64(usage.Used), m, "used")
 		ch <- prometheus.MustNewConstMetric(c.desc, prometheus.GaugeValue, float64(usage.Free), m, "free")
 		ch <- prometheus.MustNewConstMetric(c.desc, prometheus.GaugeValue, usage.UsedPercent, m, "used_percent")
-	}
-
-	// Add system-wide total (sum of selected mounts)
-	ch <- prometheus.MustNewConstMetric(c.desc, prometheus.GaugeValue, float64(totalTotal), "all", "total")
-	ch <- prometheus.MustNewConstMetric(c.desc, prometheus.GaugeValue, float64(totalUsed), "all", "used")
-	ch <- prometheus.MustNewConstMetric(c.desc, prometheus.GaugeValue, float64(totalFree), "all", "free")
-	if totalTotal > 0 {
-		ch <- prometheus.MustNewConstMetric(c.desc, prometheus.GaugeValue, (float64(totalUsed)/float64(totalTotal))*100, "all", "used_percent")
 	}
 }

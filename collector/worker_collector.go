@@ -171,7 +171,6 @@
 package collector
 
 import (
-	"log"
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -187,9 +186,7 @@ type WorkerCollector struct {
 
 func NewWorkerCollector(path string) *WorkerCollector {
 	labelKeys := []string{
-		"log_file",
 		"run_id",
-		"slug",
 		"repository",
 		"repository_owner",
 		"workflow",
@@ -225,23 +222,15 @@ func (c *WorkerCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *WorkerCollector) Collect(ch chan<- prometheus.Metric) {
 	Worker, err := parser.ParseLatestWorkerLog(c.logPath)
 	if err != nil || Worker == nil || Worker.RunID == "" {
-		log.Printf("Failed to parse Worker or missing run_id: %v", err)
 		return
 	}
 
 	labels := []string{
-		defaultIfEmpty(Worker.LogFile),
 		defaultIfEmpty(Worker.RunID),
-		defaultIfEmpty(Worker.Slug),
 		defaultIfEmpty(Worker.Repo),
 		defaultIfEmpty(Worker.Owner),
 		defaultIfEmpty(Worker.Workflow),
 	}
-
-	log.Printf("Labels: %#v", labels)
-	log.Printf("StartTime: %v (%d)", Worker.StartTime, Worker.StartTime.Unix())
-	log.Printf("EndTime  : %v (%d)", Worker.EndTime, Worker.EndTime.Unix())
-	log.Printf("Duration : %v (%.0f seconds)", Worker.TotalRuntime, Worker.TotalRuntime.Seconds())
 
 	c.workflowStart.WithLabelValues(labels...).Set(float64(Worker.StartTime.Unix()))
 	c.workflowEnd.WithLabelValues(labels...).Set(float64(Worker.EndTime.Unix()))
