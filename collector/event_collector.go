@@ -37,12 +37,12 @@ func NewEventCollector(cfg *config.Config) *EventCollector {
 		eventTriggered: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "github_event_triggered_total",
 			Help: "Number of GitHub workflow events triggered",
-		}, []string{"repo", "org", "workflow"}),
+		}, []string{"repository", "repository_owner", "workflow"}),
 
 		eventTimestamp: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "github_event_triggered_timestamp_seconds",
 			Help: "Unix timestamp of the last GitHub workflow trigger",
-		}, []string{"repo", "org", "workflow"}),
+		}, []string{"repository", "repository_owner", "workflow"}),
 
 		runnerState: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "github_runner_state",
@@ -121,15 +121,8 @@ func (c *EventCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	repo := event.Repository.RepoName
-	org := ""
-	if event.Organization != nil {
-		org = event.Organization.OrgName
-	}
-	// ent := ""
-	// if event.Enterprise != nil {
-	// 	ent = event.Enterprise.Slug
-	// }
+	repository := parser.EventRepository(event)
+	repositoryOwner := parser.EventRepositoryOwner(event)
 	workflow := event.WorkflowName
 
 	// logDir := filepath.Dir(c.eventPath)
@@ -145,7 +138,7 @@ func (c *EventCollector) Collect(ch chan<- prometheus.Metric) {
 	// 	return
 	// }
 
-	labels := []string{repo, org, workflow}
+	labels := []string{repository, repositoryOwner, workflow}
 
 	ts, err := time.Parse(time.RFC3339, event.Repository.PushedAt)
 	if err != nil {

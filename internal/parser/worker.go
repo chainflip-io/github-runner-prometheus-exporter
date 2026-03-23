@@ -161,7 +161,6 @@ package parser
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -206,7 +205,6 @@ func ParseLatestWorkerLog(dir string) (*WorkerTimestamps, error) {
 		return logs[i] > logs[j]
 	})
 	latestLog := logs[0]
-	log.Printf("📄 Latest log selected: %s", latestLog)
 
 	file, err := os.Open(latestLog)
 	if err != nil {
@@ -224,8 +222,6 @@ func ParseLatestWorkerLog(dir string) (*WorkerTimestamps, error) {
 			break
 		}
 	}
-	log.Printf("🔍 First line: %s", firstLine)
-
 	// Read last line
 	var lastLine string
 	for scanner.Scan() {
@@ -234,25 +230,14 @@ func ParseLatestWorkerLog(dir string) (*WorkerTimestamps, error) {
 			lastLine = text
 		}
 	}
-	log.Printf("🔍 Last line : %s", lastLine)
-
 	startTS, err1 := extractTimestamp(firstLine)
 	endTS, err2 := extractTimestamp(lastLine)
 
 	if err1 != nil || err2 != nil {
-		if err1 != nil {
-			log.Printf("🧨 Failed to parse start timestamp: %v", err1)
-		}
-		if err2 != nil {
-			log.Printf("🧨 Failed to parse end timestamp: %v", err2)
-		}
 		return nil, fmt.Errorf("❌ could not parse timestamps from log")
 	}
 
 	duration := endTS.Sub(startTS)
-	log.Printf(" Parsed start: %s", startTS.Format(time.RFC3339))
-	log.Printf(" Parsed end  : %s", endTS.Format(time.RFC3339))
-	log.Printf(" Duration     : %s", duration)
 
 	runInfo, _ := ExtractJSONFromLog(latestLog)
 	runID := "unknown"
@@ -267,8 +252,6 @@ func ParseLatestWorkerLog(dir string) (*WorkerTimestamps, error) {
 		owner = runInfo.RepositoryOwner
 		workflow = runInfo.Workflow
 	}
-	fmt.Println("RunID:", runID)
-
 	return &WorkerTimestamps{
 		LogFile:      filepath.Base(latestLog),
 		StartTime:    startTS,
