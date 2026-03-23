@@ -118,10 +118,6 @@ func (c *EventCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	if _, err := os.Stat(c.eventPath); os.IsNotExist(err) {
-		return
-	}
-
 	event, err := parser.ReadEventJSON(c.eventPath)
 	if err != nil {
 		log.Printf("Failed to parse event.json: %v", err)
@@ -131,19 +127,6 @@ func (c *EventCollector) Collect(ch chan<- prometheus.Metric) {
 	repository := parser.EventRepository(event)
 	repositoryOwner := parser.EventRepositoryOwner(event)
 	workflow := event.WorkflowName
-
-	// logDir := filepath.Dir(c.eventPath)
-	// job, err := parser.ParseLatestWorkerLog(logDir)
-	// runID := ""
-	// if err == nil && job != nil && job.RunID != "" {
-	// 	runID = job.RunID
-	// }
-
-	// ts, err := time.Parse(time.RFC3339, event.Repository.PushedAt)
-	// if err != nil {
-	// 	log.Printf("Failed to parse pushed_at: %v", err)
-	// 	return
-	// }
 
 	labels := []string{repository, repositoryOwner, workflow}
 
